@@ -61,7 +61,15 @@ cdef class Atom(Vertex):
 
     cpdef bint isOxygen(self)
 
+    cpdef bint isFluorine(self)
+
+    cpdef bint isSilicon(self)
+
     cpdef bint isSulfur(self)
+
+    cpdef bint isChlorine(self)
+
+    cpdef bint isIodine(self)
     
     cpdef incrementRadical(self)
 
@@ -163,6 +171,8 @@ cdef class Molecule(Graph):
     cpdef Atom getLabeledAtom(self, str label)
 
     cpdef dict getLabeledAtoms(self)
+
+    cpdef dict get_element_count(self)
 
     cpdef bint isIsomorphic(self, Graph other, dict initialMap=?) except -2
 

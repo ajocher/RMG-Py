@@ -869,6 +869,8 @@ class Group(Graph):
         Graph.__init__(self, atoms)
         self.props = props or {}
         self.multiplicity = multiplicity or []
+        self.elementCount = {}
+        self.radicalCount = -1
         self.update()
 
     def __reduce__(self):
@@ -1090,6 +1092,38 @@ class Group(Graph):
                     labeled[atom.label] = atom
         return labeled
 
+    def get_element_count(self):
+        """
+        Returns the element count for the molecule as a dictionary.
+        Wildcards are not counted as any particular element.
+        """
+        from rmgpy.molecule.atomtype import allElements
+
+        element_count = {}
+        for atom in self.atoms:
+            same = True
+            match = None
+            for atomtype in atom.atomType:
+                if match is None:
+                    # This is the first type in the list, so check all elements
+                    for element in allElements:
+                        if atomtype.isSpecificCaseOf(atomTypes[element]):
+                            match = element
+                            break
+                else:
+                    # We've already matched one atomtype, now confirm that the rest are the same
+                    if not atomtype.isSpecificCaseOf(atomTypes[match]):
+                        same = False
+                        break
+            # If match is None, then the group is not a specific case of any element
+            if match is not None and same:
+                if match in element_count:
+                    element_count[match] += 1
+                else:
+                    element_count[match] = 1
+
+        return element_count
+
     def fromAdjacencyList(self, adjlist):
         """
         Convert a string adjacency list `adjlist` to a molecular structure.
@@ -1116,38 +1150,13 @@ class Group(Graph):
         Update the molecular fingerprint used to accelerate the subgraph
         isomorphism checks.
         """
-        cython.declare(atom=GroupAtom, atomType=AtomType)
-        cython.declare(carbon=AtomType, nitrogen=AtomType, oxygen=AtomType, sulfur=AtomType)
-        cython.declare(isCarbon=cython.bint, isNitrogen=cython.bint, isOxygen=cython.bint, isSulfur=cython.bint, radical=cython.int)
-        
-        carbon   = atomTypes['C']
-        nitrogen = atomTypes['N']
-        oxygen   = atomTypes['O']
-        sulfur   = atomTypes['S']
-        
-        self.carbonCount   = 0
-        self.nitrogenCount = 0
-        self.oxygenCount   = 0
-        self.sulfurCount   = 0
-        self.radicalCount  = 0
+        cython.declare(atom=GroupAtom)
+
+        self.elementCount = self.get_element_count()
+        self.radicalCount = 0
         for atom in self.vertices:
-            if len(atom.atomType) == 1:
-                atomType   = atom.atomType[0]
-                isCarbon   = atomType.equivalent(carbon)
-                isNitrogen = atomType.equivalent(nitrogen)
-                isOxygen   = atomType.equivalent(oxygen)
-                isSulfur   = atomType.equivalent(sulfur)
-                if isCarbon and not isNitrogen and not isOxygen and not isSulfur:
-                    self.carbonCount += 1
-                elif isNitrogen and not isCarbon and not isOxygen and not isSulfur:
-                    self.nitrogenCount += 1
-                elif isOxygen and not isCarbon and not isNitrogen and not isSulfur:
-                    self.oxygenCount += 1
-                elif isSulfur and not isCarbon and not isNitrogen and not isOxygen:
-                    self.sulfurCount += 1
-            if len(atom.radicalElectrons) == 1:
-                radical = atom.radicalElectrons[0]
-                self.radicalCount += radical
+            if len(atom.radicalElectrons) >= 1:
+                self.radicalCount += atom.radicalElectrons[0]
 
     def isIsomorphic(self, other, initialMap=None):
         """
