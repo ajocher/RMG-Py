@@ -381,7 +381,8 @@ class RMG(util.Subject):
     
         
         # Make output subdirectories
-        util.makeOutputSubdirectory(self.outputDirectory, 'pdep')
+        if self.pressureDependence is not None:
+            util.makeOutputSubdirectory(self.outputDirectory, 'pdep')
         util.makeOutputSubdirectory(self.outputDirectory, 'solver')
         util.makeOutputSubdirectory(self.outputDirectory, 'kinetics_database')
 

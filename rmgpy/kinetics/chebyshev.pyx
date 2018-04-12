@@ -28,6 +28,7 @@
 ###############################################################################
 
 import numpy
+import sys
 from libc.math cimport exp, log, sqrt, log10
 
 cimport rmgpy.constants as constants
@@ -165,6 +166,10 @@ cdef class Chebyshev(PDepKineticsModel):
         for t in range(self.degreeT):
             for p in range(self.degreeP):
                 k += coeffs[t,p] * self.chebyshev(t, Tred) * self.chebyshev(p, Pred)
+
+        if 10.0**k == 0:
+            k = sys.float_info.min
+
         return 10.0**k
 
     cpdef fitToData(self, numpy.ndarray Tlist, numpy.ndarray Plist, numpy.ndarray K,

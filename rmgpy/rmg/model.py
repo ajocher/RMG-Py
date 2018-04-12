@@ -322,11 +322,11 @@ class CoreEdgeReactionModel:
             submit(spec,self.solventName)
         
         if spec.label == '':
-#            if spec.thermo and spec.thermo.label != '': #check if thermo libraries have a name for it
-#                logging.info('Species with SMILES of {0} named {1} based on thermo library name'.format(molecule.toSMILES().replace('/','').replace('\\',''),spec.thermo.label))
-#                spec.label = spec.thermo.label
-#                label = spec.label
-#            else:
+            if spec.thermo and spec.thermo.label != '': #check if thermo libraries have a name for it
+                logging.info('Species with SMILES of {0} named {1} based on thermo library name'.format(molecule.toSMILES().replace('/','').replace('\\',''),spec.thermo.label))
+                spec.label = spec.thermo.label
+                label = spec.label
+            else:
                 # Use SMILES as default format for label
                 # However, SMILES can contain slashes (to describe the
                 # stereochemistry around double bonds); since RMG doesn't 
