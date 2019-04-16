@@ -110,6 +110,9 @@ def _react_species_star(args):
     """Wrapper to unpack zipped arguments for use with map"""
     return react_species(*args)
 
+def _react_species_star(args):
+	    """Wrapper to unpack zipped arguments for use with map"""
+	    return reactSpecies(*args)
 
 def react_species(species_tuple, only_families=None):
     """
@@ -129,20 +132,27 @@ def react_all(core_spc_list, numOldCoreSpecies, unimolecularReact, bimolecularRe
     Reacts the core species list via uni-, bi-, and trimolecular
     reactions and splits reaction families per task for improved load balancing in parallel runs.
     """
+    # Generate a list of families to be added to bimolecular species tuples
+    from rmgpy.solver.simple import get_filterlist_of_all_RMG_families
+    all_families = get_filterlist_of_all_RMG_families()
 
     procnum = determine_procnum_from_RAM()
 
-    # Select reactive species that can undergo unimolecular reactions:
-    spc_tuples = [(core_spc_list[i],)
-                  for i in xrange(numOldCoreSpecies) if (unimolecularReact[i] and core_spc_list[i].reactive)]
+    spcTuples = []
+    for i in xrange (numOldCoreSpecies):
+        for k, family in enumerate (all_families):
+            # Find reactions involving the species that are unimolecular
+            if unimolecularReact[i,k] and coreSpcList[i].reactive:
+                    spcTuples.append(((coreSpcList[i],), family))
 
     for i in xrange(numOldCoreSpecies):
         for j in xrange(i, numOldCoreSpecies):
-            # Find reactions involving the species that are bimolecular.
-            # This includes a species reacting with itself (if its own concentration is high enough).
-            if bimolecularReact[i, j]:
-                if core_spc_list[i].reactive and core_spc_list[j].reactive:
-                    spc_tuples.append((core_spc_list[i], core_spc_list[j]))
+            for k, family in enumerate (all_families):
+                # Find reactions involving the species that are bimolecular
+                # This includes a species reacting with itself (if its own concentration is high enough)
+	        if bimolecularReact[i,j,k]:
+                    if coreSpcList[i].reactive and coreSpcList[j].reactive:
+                        spcTuples.append(((coreSpcList[i], coreSpcList[j]), family))
 
     if trimolecularReact is not None:
         for i in xrange(numOldCoreSpecies):
