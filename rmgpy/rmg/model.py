@@ -654,15 +654,15 @@ class CoreEdgeReactionModel:
             rxns = react_all(self.core.species, numOldCoreSpecies,
                              unimolecularReact, bimolecularReact, trimolecularReact=trimolecularReact)
 
-            # Get new species and save in spcs
-            spcs = []
-            spcs_list = []
-            for rxn in rxns:
-                spcs.extend(rxn.reactants)
-                spcs.extend(rxn.products)
+            spcs = [self.retrieve_species(rxn) for rxn in rxns]
 
             for rxn, spc in zip(rxns, spcs):
-               self.processNewReactions([rxn], spc, generateThermo=False)
+                rxn = self.inflate(rxn)
+                try:
+                    rxn.reverse = self.inflate(rxn.reverse)
+                except AttributeError:
+                    pass
+                self.processNewReactions([rxn], spc, generateThermo=False)
 
         ################################################################
         # Begin processing the new species and reactions
@@ -1955,6 +1955,29 @@ class CoreEdgeReactionModel:
         except KeyError: # no such short-list: must be new, unless in seed.
             return []
 
+    def inflate(self, rxn):
+        """
+        Convert reactions from
+        reactants/products that are referring
+        to the core species index, to the respective Species objects.
+        """
+        reactants, products, pairs = [], [], []
+
+        for reactant in rxn.reactants:
+            reactants.append(reactant)
+
+        for product in rxn.products:
+            products.append(product)
+
+        for reactant, product in rxn.pairs:
+            pairs.append((reactant, product))
+
+        rxn.reactants = reactants  
+        rxn.products = products
+        rxn.pairs = pairs
+
+        return rxn
+
     def getSpecies(self, obj):
         """
         Retrieve species object, by
@@ -1965,6 +1988,17 @@ class CoreEdgeReactionModel:
             return spc
         return obj
 
+    def retrieve_species(self, rxn):
+        """
+        Searches for the first reactant or product in the reaction that is
+        a core species, which was used to generate the reaction in the first
+        place. Reactants or products not represented in the core will be
+        a newly-generated structure.
+        """
+        for obj in itertools.chain(rxn.reactants, rxn.products):
+            for spc in self.core.species:
+                if obj.isIsomorphic(spc):
+                    return obj
 
 def generateReactionKey(rxn, useProducts=False):
     """

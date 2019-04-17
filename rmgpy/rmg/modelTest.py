@@ -390,6 +390,32 @@ class TestCoreEdgeReactionModel(unittest.TestCase):
         
         self.assertEquals(len(difset),1) #should be one because we thermo filtered down to one edge species
         
+    def testInflate(self):
+        """
+        Test that CoreEdgeReactionModel.inflate method correctly works.
+        """
+        spcA = Species().fromSMILES('[OH]')
+        spcs = [Species().fromSMILES('CC'), Species().fromSMILES('[CH3]')]
+        spcTuples = [(spcA, spc) for spc in spcs]
+
+        rxns = list(react(*spcTuples))
+
+        cerm = CoreEdgeReactionModel()
+
+        for rxn in rxns:
+            cerm.makeNewReaction(rxn)
+
+        """
+        3 expected H-abstraction reactions:
+            OH + CC = H2O + C[CH2]
+            OH + [CH3] = H2O + [CH2]
+            OH + [CH3] = [O] + C
+        """
+        for i, rxn in enumerate(rxns):
+            rxns[i] = cerm.inflate(rxn)
+
+        for rxn in rxns:
+            self.assertTrue(rxn.isBalanced())
 
     def test_checkForExistingReaction_eliminates_identical_reactions(self):
         """
