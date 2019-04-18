@@ -132,7 +132,7 @@ def react_all(core_spc_list, numOldCoreSpecies, unimolecularReact, bimolecularRe
     Reacts the core species list via uni-, bi-, and trimolecular
     reactions and splits reaction families per task for improved load balancing in parallel runs.
     """
-    # Generate a list of families to be added to bimolecular species tuples
+    # Generate a list of families to be added to the species tuples
     from rmgpy.solver.simple import get_filterlist_of_all_RMG_families
     all_families = get_filterlist_of_all_RMG_families()
 
