@@ -138,12 +138,12 @@ def react_all(core_spc_list, numOldCoreSpecies, unimolecularReact, bimolecularRe
 
     procnum = determine_procnum_from_RAM()
 
-    spcTuples = []
+    spc_tuples = []
     for i in xrange (numOldCoreSpecies):
         for k, family in enumerate (all_families):
             # Find reactions involving the species that are unimolecular
-            if unimolecularReact[i,k] and coreSpcList[i].reactive:
-                    spcTuples.append(((coreSpcList[i],), family))
+            if unimolecularReact[i,k] and core_spc_list[i].reactive:
+                    spc_tuples.append(((core_spc_list[i],), family))
 
     for i in xrange(numOldCoreSpecies):
         for j in xrange(i, numOldCoreSpecies):
@@ -151,17 +151,18 @@ def react_all(core_spc_list, numOldCoreSpecies, unimolecularReact, bimolecularRe
                 # Find reactions involving the species that are bimolecular
                 # This includes a species reacting with itself (if its own concentration is high enough)
 	        if bimolecularReact[i,j,k]:
-                    if coreSpcList[i].reactive and coreSpcList[j].reactive:
-                        spcTuples.append(((coreSpcList[i], coreSpcList[j]), family))
+                    if core_spc_list[i].reactive and core_spc_list[j].reactive:
+                        spc_tuples.append(((core_spc_list[i], core_spc_list[j]), family))
 
     if trimolecularReact is not None:
         for i in xrange(numOldCoreSpecies):
             for j in xrange(i, numOldCoreSpecies):
                 for k in xrange(j, numOldCoreSpecies):
-                    # Find reactions involving the species that are trimolecular.
-                    if trimolecularReact[i, j, k]:
-                        if core_spc_list[i].reactive and core_spc_list[j].reactive and core_spc_list[k].reactive:
-                            spc_tuples.append((core_spc_list[i], core_spc_list[j], core_spc_list[k]))
+                    for l, family in enumerate (all_families):
+                        # Find reactions involving the species that are trimolecular
+                        if trimolecularReact[i,j,k,l]:
+                            if core_spc_list[i].reactive and core_spc_list[j].reactive and core_spc_list[k].reactive:
+                                spc_tuples.append(((core_spc_list[i], core_spc_list[j], core_spc_list[k]), family))
 
     if procnum == 1:
         # React all families like normal (provide empty argument for only_families)
@@ -197,4 +198,31 @@ def react_all(core_spc_list, numOldCoreSpecies, unimolecularReact, bimolecularRe
                 spc_fam_tuples.append((spc_tuple,))
 
     return list(react(*spc_fam_tuples))
+
+
+def deflateReaction(rxn, molDict):
+    """
+    This function deflates a single reaction holding species objects, and uses the provided
+    dictionary to populate reactants/products/pairs with integer indices,
+    if possible.
+
+    If the Molecule object could not be found in the dictionary, a new
+    dictionary entry is created, using the Species object as the value
+    for the entry.
+
+    The reactants/products/pairs of both the forward and reverse reaction 
+    object are populated with the value of the dictionary, either an
+    integer index, or either a Species object.
+    """
+    for spec in itertools.chain(rxn.reactants, rxn.products):
+        if not spec.molecule[0] in molDict:
+            molDict[spec.molecule[0]] = spec
+
+    rxn.reactants = [molDict[spec.molecule[0]] for spec in rxn.reactants]
+    rxn.products = [molDict[spec.molecule[0]] for spec in rxn.products]
+    try:
+        rxn.pairs = [(molDict[reactant.molecule[0]], molDict[product.molecule[0]]) for reactant, product in rxn.pairs]
+    except ValueError:
+        rxn.pairs = None
+>>>>>>> ce417e148... Custom filter threshold for trimolecular reactions.
 
