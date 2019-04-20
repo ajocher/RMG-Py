@@ -1191,11 +1191,12 @@ class CoreEdgeReactionModel:
         """
         Tmax = self.Tmax
         for spc in spcs:
-            G = spc.thermo.getFreeEnergy(Tmax)
-            if G > self.Gfmax:
-                Gn = (G-self.Gmax)/(self.Gmax-self.Gmin)
-                logging.info('Removing species {0} with Gibbs energy {1} from edge because it\'s Gibbs number {2} is greater than the toleranceThermoKeepSpeciesInEdge of {3} '.format(spc,G,Gn,self.toleranceThermoKeepSpeciesInEdge))
-                self.removeSpeciesFromEdge(self.reactionSystems,spc)
+            if spc.thermo:
+                G = spc.thermo.getFreeEnergy(Tmax)
+                if G > self.Gfmax:
+                    Gn = (G-self.Gmax)/(self.Gmax-self.Gmin)
+                    logging.info('Removing species {0} with Gibbs energy {1} from edge because it\'s Gibbs number {2} is greater than the toleranceThermoKeepSpeciesInEdge of {3} '.format(spc,G,Gn,self.toleranceThermoKeepSpeciesInEdge))
+                    self.removeSpeciesFromEdge(self.reactionSystems,spc)
 
         # Delete any networks that became empty as a result of pruning
         if self.pressureDependence:
