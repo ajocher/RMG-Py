@@ -35,16 +35,19 @@ import numpy as np
 from rmgpy import settings
 from rmgpy.data.kinetics import TemplateReaction
 from rmgpy.data.rmg import RMGDatabase
-from rmgpy.molecule import Molecule
-from rmgpy.reaction import Reaction
 from rmgpy.species import Species
 
 from rmgpy.rmg.main import RMG
-from rmgpy.rmg.react import react, reactAll, deflate, deflateReaction
+from rmgpy.rmg.react import react, react_all, deflate, deflateReaction
 
 ###################################################
 
-TESTFAMILY = 'H_Abstraction'
+TESTFAMILY = ['H_Abstraction','R_Recombination','Intra_Disproportionation','Intra_RH_Add_Endocyclic',
+        'Singlet_Carbene_Intra_Disproportionation','Intra_ene_reaction','Disproportionation',
+        '1,4_Linear_birad_scission','R_Addition_MultipleBond','2+2_cycloaddition_Cd','Diels_alder_addition',
+        'Intra_RH_Add_Exocyclic','Intra_Retro_Diels_alder_bicyclic','Intra_2+2_cycloaddition_Cd',
+        'Birad_recombination','Intra_Diels_alder_monocyclic','1,4_Cyclic_birad_scission',
+        '1,2_Insertion_carbene','1,2_Insertion_CO']
 
 class TestReact(unittest.TestCase):
 
@@ -63,17 +66,20 @@ class TestReact(unittest.TestCase):
         self.rmg.database.loadForbiddenStructures(os.path.join(path, 'forbiddenStructures.py'))
         # kinetics family loading
         self.rmg.database.loadKinetics(os.path.join(path, 'kinetics'),
-                                       kineticsFamilies=[TESTFAMILY],
+                                       kineticsFamilies=TESTFAMILY,
                                        reactionLibraries=[]
                                        )
 
-    def testReact(self):
+    def testReactMultiproc(self):
         """
-        Test that reaction generation from the available families works.
+        Test that reaction generation from the available families works with python multiprocessing.
         """
+        import rmgpy.rmg.main
+        rmgpy.rmg.main.maxproc = 2
+
         spcA = Species().fromSMILES('[OH]')
         spcs = [Species().fromSMILES('CC'), Species().fromSMILES('[CH3]')]
-        spcTuples = [(spcA, spc) for spc in spcs]
+        spcTuples = [((spcA, spc), ['H_Abstraction']) for spc in spcs]
 
         reactionList = list(react(*spcTuples))
         self.assertIsNotNone(reactionList)
@@ -145,15 +151,18 @@ class TestReact(unittest.TestCase):
         """
         Test that the reactAll function works.
         """
+        import rmgpy.rmg.main
+        rmgpy.rmg.main.maxproc = 2
 
         spcs = [
                 Species().fromSMILES('CC'),
                 Species().fromSMILES('[CH3]'),
-                Species().fromSMILES('[OH]')
+                Species().fromSMILES('[OH]'),
+                Species().fromSMILES('CCCCCCCCCCC')
                 ]
 
         N = len(spcs)
-        rxns = reactAll(spcs, N, np.ones(N), np.ones([N,N]))
+        rxns = react_all(spcs, N, np.ones(N), np.ones([N, N]), np.ones([N, N, N]))
         self.assertIsNotNone(rxns)
         self.assertTrue(all([isinstance(rxn, TemplateReaction) for rxn in rxns]))
 
@@ -194,7 +203,6 @@ class TestReact(unittest.TestCase):
             self.assertTrue(isinstance(spc, t), 'Species {} is not of type {}'.format(spc,t))
         for spc in rxn.products:
             self.assertTrue(isinstance(spc, Species))
-
 
     def tearDown(self):
         """
