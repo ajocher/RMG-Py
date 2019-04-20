@@ -600,12 +600,14 @@ and immediately used in input files without any additional changes.
             reaction = Reaction(reactants=[], products=[])
             for molecule in entry.item.reactants:
                 reactant = Species(molecule=[molecule])
-                reactant.generate_resonance_structures()
+                if reactant.molecule.reactive:
+                    reactant.generate_resonance_structures()
                 reactant.thermo = thermoDatabase.getThermoData(reactant)
                 reaction.reactants.append(reactant)
             for molecule in entry.item.products:
                 product = Species(molecule=[molecule])
-                product.generate_resonance_structures()
+                if product.molecule.reactive:
+                    product.generate_resonance_structures()
                 product.thermo = thermoDatabase.getThermoData(product)
                 reaction.products.append(product)
 
