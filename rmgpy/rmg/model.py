@@ -76,7 +76,10 @@ def write_QMfiles(mol, quantumMechanics):
     """
     If quantumMechanics is turned on thermo is calculated in parallel here. 
     """
-    quantumMechanics.getThermoData(mol)
+    try:
+        quantumMechanics.getThermoData(mol)
+    except:
+        logging.debug('On-the-fly QM not successful. Continue with group additivity.')
 
 class ReactionModel:
     """
@@ -903,11 +906,11 @@ class CoreEdgeReactionModel:
                     mol_list_arg.append((mol, quantumMechanics))
 
                 if procnum == 1:
-                    logging.info('Writing QM files with {0} process.'.format(procnum))
+                    logging.info('Generating QM thermo with {0} process.'.format(procnum))
                     #map(quantumMechanics.getThermoData, mol_list)
                     map(_write_QMfiles_star, mol_list_arg)
                 elif procnum > 1:
-                    logging.info('Writing QM files with {0} processes.'.format(procnum))
+                    logging.info('Generating QM thermo with {0} processes.'.format(procnum))
                     p = Pool(processes=procnum)
                     p.map(_write_QMfiles_star, mol_list_arg)
                     p.close()
