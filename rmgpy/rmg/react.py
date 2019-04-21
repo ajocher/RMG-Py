@@ -136,6 +136,14 @@ def react_all(core_spc_list, numOldCoreSpecies, unimolecularReact, bimolecularRe
     # Only employ family splitting for reactants that have a larger number than min_atoms
     min_atoms = 10
 
+    major_families = [
+         'H_Abstraction', 'R_Recombination', 'Intra_Disproportionation', 'Intra_RH_Add_Endocyclic',
+         'Singlet_Carbene_Intra_Disproportionation', 'Intra_ene_reaction', 'Disproportionation',
+         '1,4_Linear_birad_scission', 'R_Addition_MultipleBond', '2+2_cycloaddition_Cd', 'Diels_alder_addition',
+         'Intra_RH_Add_Exocyclic', 'Intra_Retro_Diels_alder_bicyclic', 'Intra_2+2_cycloaddition_Cd',
+         'Birad_recombination', 'Intra_Diels_alder_monocyclic', '1,4_Cyclic_birad_scission', '1,2_Insertion_carbene',
+     ]
+
     procnum = determine_procnum_from_RAM()
 
     spc_tuples = []
@@ -144,7 +152,8 @@ def react_all(core_spc_list, numOldCoreSpecies, unimolecularReact, bimolecularRe
         for k, family in enumerate (all_families):
             # Find reactions involving the species that are unimolecular
             if unimolecularReact[i,k] and core_spc_list[i].reactive:
-                if any([len(core_spc_list[i].molecule[0].atoms) > min_atoms]):
+                if any([len(core_spc_list[i].molecule[0].atoms) > min_atoms]) or any(
+                        [family is major_family for major_family in major_families]):
                     spc_tuples.append(((core_spc_list[i],), family))
                 else:
                     # Collect a list of families to react in same call for map
@@ -161,7 +170,8 @@ def react_all(core_spc_list, numOldCoreSpecies, unimolecularReact, bimolecularRe
 	        if bimolecularReact[i,j,k]:
                     if core_spc_list[i].reactive and core_spc_list[j].reactive:
                         if any([len(core_spc_list[i].molecule[0].atoms) > min_atoms]) or any(
-                                [len(core_spc_list[j].molecule[0].atoms) > min_atoms]):
+                                [len(core_spc_list[j].molecule[0].atoms) > min_atoms]) or any(
+                                [family is major_family for major_family in major_families]):
                             spc_tuples.append(((core_spc_list[i], core_spc_list[j]), family))
                         else:
                             # Collect a list of families to react in same call for map
@@ -180,7 +190,8 @@ def react_all(core_spc_list, numOldCoreSpecies, unimolecularReact, bimolecularRe
                             if core_spc_list[i].reactive and core_spc_list[j].reactive and core_spc_list[k].reactive:
                                 if any([len(core_spc_list[i].molecule[0].atoms) > min_atoms]) or any(
                                         [len(core_spc_list[j].molecule[0].atoms) > min_atoms]) or any(
-                                        [len(core_spc_list[k].molecule[0].atoms) > min_atoms]):
+                                        [len(core_spc_list[k].molecule[0].atoms) > min_atoms]) or any(
+                                        [family is major_family for major_family in major_families]):
                                             spc_tuples.append(((core_spc_list[i], core_spc_list[j], core_spc_list[k]), family))
                                 else:
                                     # Collect a list of families to react in same call for map
