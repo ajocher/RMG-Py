@@ -42,8 +42,6 @@ import resource
 import psutil
 from sys import platform
 
-from itertools import product
-from contextlib import contextmanager
 from multiprocessing import Pool
 
 from rmgpy.display import display
@@ -70,21 +68,15 @@ from rmgpy.data.kinetics.common import ensure_independent_atom_ids, find_degener
 from pdep import PDepReaction, PDepNetwork
 
 ################################################################################
-def merge_arguments(mol_list, quantumMechanics):
-    try:
-        quantumMechanics.getThermoData(mol_list)
-    except:
-        pass
+def _write_QMfiles_star(args):
+    """Wrapper to unpack zipped arguments for use with map"""
+    return write_QMfiles(*args)
 
-def unpack_QM_arguments(args):
-    return merge_arguments(*args)
-
-@contextmanager
-def poolcontext(*args, **kwargs):
-    pool = Pool(*args, **kwargs)
-    yield pool
-    pool.terminate()
-
+def write_QMfiles(mol, quantumMechanics):
+    """
+    If quantumMechanics is turned on thermo is calculated in parallel here. 
+    """
+    quantumMechanics.getThermoData(mol)
 
 class ReactionModel:
     """
@@ -890,32 +882,36 @@ class CoreEdgeReactionModel:
         if quantumMechanics:
             # Generate a list of molecules.
             mol_list = []
-            qm_list = []
             for spc in self.newSpeciesList:
-                if spc.molecule[0].getRadicalCount() > quantumMechanics.settings.maxRadicalNumber:
-                    for molecule in spc.molecule:
-                        if quantumMechanics.settings.onlyCyclics and molecule.isCyclic():
-                            saturated_mol = molecule.copy(deep=True)
-                            saturated_mol.saturate_radicals()
-                            if saturated_mol not in mol_list:
-                                mol_list.append(saturated_mol)
-                                qm_list.append(quantumMechanics)
-                else:
-                    if quantumMechanics.settings.onlyCyclics and spc.molecule[0].isCyclic():
-                        if spc.molecule[0] not in mol_list:
-                            mol_list.append(spc.molecule[0])
-                            qm_list.append(quantumMechanics)
-            if procnum == 1:
-                logging.info('Writing QM files with {0} process.'.format(procnum))
-                map(quantumMechanics.getThermoData, mol_list)
-            else:
-                logging.info('Writing QM files with {0} processes.'.format(procnum))
-                with poolcontext(processes=procnum) as pool:
-                    pool.map(unpack_QM_arguments, product(mol_list, qm_list))
-#                p = Pool(processes=procnum)
-#                p.map(quantumMechanics.getThermoData, mol_list)
-#                p.close()
-#                p.join()
+                if not spc.thermo:
+                    if spc.molecule[0].getRadicalCount() > quantumMechanics.settings.maxRadicalNumber:
+                        for molecule in spc.molecule:
+                            if quantumMechanics.settings.onlyCyclics and molecule.isCyclic():
+                                saturated_mol = molecule.copy(deep=True)
+                                saturated_mol.saturate_radicals()
+                                if saturated_mol not in mol_list:
+                                    mol_list.append(saturated_mol)
+                    else:
+                        if quantumMechanics.settings.onlyCyclics and spc.molecule[0].isCyclic():
+                            if spc.molecule[0] not in mol_list:
+                                mol_list.append(spc.molecule[0])
+
+            if mol_list:
+                # Zip arguments for use in map.
+                mol_list_arg = []
+                for mol in mol_list:
+                    mol_list_arg.append((mol, quantumMechanics))
+
+                if procnum == 1:
+                    logging.info('Writing QM files with {0} process.'.format(procnum))
+                    #map(quantumMechanics.getThermoData, mol_list)
+                    map(_write_QMfiles_star, mol_list_arg)
+                elif procnum > 1:
+                    logging.info('Writing QM files with {0} processes.'.format(procnum))
+                    p = Pool(processes=procnum)
+                    p.map(_write_QMfiles_star, mol_list_arg)
+                    p.close()
+                    p.join()
 
         # Serial thermo calculation for other methods
         map(self.generateThermo, self.newSpeciesList)
@@ -2021,7 +2017,7 @@ class CoreEdgeReactionModel:
         for obj in itertools.chain(rxn.reactants, rxn.products):
             for spc in self.core.species:
                 if obj.isIsomorphic(spc):
-                    return obj
+                    return spc
 
 def generateReactionKey(rxn, useProducts=False):
     """
